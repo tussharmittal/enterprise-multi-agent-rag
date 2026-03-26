@@ -211,3 +211,6 @@ __marimo__/
 
 # Local Database Storage
 local_qdrant_data/
+
+# Environment Variables
+.env

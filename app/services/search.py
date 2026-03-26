@@ -37,7 +37,7 @@ def search_documents(query: str, limit: int = 2):
 
 if __name__ == "__main__":
     # Let's test it with a natural language question that doesn't use exact keywords
-    test_query = "What programming language do we use for the backend?"
+    test_query = "Space exploration updates"
     
     top_matches = search_documents(test_query)
     
