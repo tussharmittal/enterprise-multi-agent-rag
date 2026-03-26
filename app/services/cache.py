@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 # Load the secret variables from the .env file
 load_dotenv()
 
-REDIS_URL = os.getenv("UPSTASH_REDIS_REST_URL")
-REDIS_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN")
+REDIS_URL = os.getenv("UPSTASH_REDIS_URL")
+REDIS_TOKEN = os.getenv("UPSTASH_REDIS_TOKEN")
 
 if not REDIS_URL or not REDIS_TOKEN:
     raise ValueError("🚨 Missing Upstash credentials in .env file!")
@@ -43,8 +43,5 @@ def set_cached_results(query: str, results: list, expiration_seconds: int = 3600
     cache_key = generate_cache_key(query)
     
     # We must convert the Python list of results into a JSON string to store it
-    redis_client.setex(
-        name=cache_key,
-        time=expiration_seconds,
-        value=json.dumps(results)
-    )
+    # Passing purely positional arguments so Upstash doesn't throw a keyword error!
+    redis_client.setex(cache_key, expiration_seconds, json.dumps(results))
