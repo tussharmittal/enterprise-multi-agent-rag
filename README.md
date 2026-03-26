@@ -22,7 +22,7 @@ Currently in **Phase 3** of development (Routing & Async Processing).
 
 **1. Clone the repository:**
 ```bash
-git clone [https://github.com/YOUR_USERNAME/enterprise-multi-agent-rag.git](https://github.com/YOUR_USERNAME/enterprise-multi-agent-rag.git)
+git clone [https://github.com/tussharmittal/enterprise-multi-agent-rag.git](https://github.com/tussharmittal/enterprise-multi-agent-rag.git)
 cd enterprise-multi-agent-rag
 ```
 
