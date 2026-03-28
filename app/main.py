@@ -1,25 +1,44 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
 import time
 import os
 from dotenv import load_dotenv, find_dotenv
+
+# Queue and Queue UI imports
 from arq import create_pool
 from arq.connections import RedisSettings
 from arq.jobs import Job, JobStatus
+
+# Security / Rate Limiting imports
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
+import redis.asyncio as redis
 
 # Import our custom services
 from app.services.search import search_documents
 from app.services.cache import get_cached_results, set_cached_results
 from app.services.router import determine_route
 
-# Load our environment variables
 load_dotenv(find_dotenv())
 REDIS_URI = os.getenv("UPSTASH_REDIS_URI")
+
+# Modern FastAPI Lifespan (Startup & Shutdown logic)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # STARTUP: Connect the Rate Limiter to Upstash Redis
+    redis_connection = redis.from_url(REDIS_URI, encoding="utf-8", decode_responses=True)
+    await FastAPILimiter.init(redis_connection)
+    print("🛡️ Rate Limiter initialized and connected to Redis.")
+    yield
+    # SHUTDOWN: Clean up the connection
+    await redis_connection.close()
 
 app = FastAPI(
     title="Enterprise Multi-Agent RAG API",
     description="API Gateway for routing, caching, and processing LLM queries.",
-    version="1.0.0"
+    version="1.2.0",
+    lifespan=lifespan # <-- Telling FastAPI to use our startup logic
 )
 
 class QueryRequest(BaseModel):
@@ -33,7 +52,8 @@ queue_pool = None
 async def health_check():
     return {"status": "healthy", "service": "api-gateway"}
 
-@app.post("/ask", tags=["Agentic Routing"])
+# Limit: Max 5 requests per 60 seconds per IP address
+@app.post("/ask", tags=["Agentic Routing"], dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 async def ask_system(request: QueryRequest):
     global queue_pool
     start_time = time.time()

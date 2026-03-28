@@ -3,7 +3,8 @@ import os
 from dotenv import load_dotenv, find_dotenv
 from arq.connections import RedisSettings
 from arq.worker import Worker
-from groq import AsyncGroq  # <-- Our new LLM brain!
+from groq import AsyncGroq
+from duckduckgo_search import DDGS  # <-- Our free gateway to the internet!
 
 # Force Python to find the .env file
 env_path = find_dotenv()
@@ -17,38 +18,54 @@ if not REDIS_URI:
 if not GROQ_API_KEY:
     raise ValueError("🚨 Missing GROQ_API_KEY in .env file!")
 
-# Initialize the blazing fast Groq client
+# Initialize the Groq client
 groq_client = AsyncGroq(api_key=GROQ_API_KEY)
 
+def scrape_live_web(query: str, max_results: int = 3):
+    """Sync function to quickly grab the top search snippets from DuckDuckGo."""
+    try:
+        results = DDGS().text(query, max_results=max_results)
+        context = ""
+        for i, res in enumerate(results):
+            context += f"Source {i+1}: {res.get('title')}\nSnippet: {res.get('body')}\n\n"
+        return context
+    except Exception as e:
+        print(f"⚠️ Search failed: {e}")
+        return "No live web data available."
+
 async def run_research_agent(ctx, query: str):
-    """
-    This background agent takes the heavy task, sends it to Llama-3 via Groq, 
-    and waits for the massive response to stream back.
-    """
     job_id = ctx['job_id']
     print(f"\n[👷 Worker {job_id}] 📥 Picked up heavy task: '{query}'")
-    print(f"[👷 Worker {job_id}] 🧠 Consulting Llama-3 for deep research...")
     
+    # 1. RETRIEVE: Go to the live internet first
+    print(f"[👷 Worker {job_id}] 🌐 Scraping the live web for current context...")
+    # We use asyncio.to_thread so the synchronous search doesn't block our async worker
+    live_context = await asyncio.to_thread(scrape_live_web, query)
+    
+    # 2. GENERATE: Pass everything to the LLM
+    print(f"[👷 Worker {job_id}] 🧠 Consulting Llama 3.1 with live data...")
     try:
-        # We use Llama 3 8B because it is lightning fast and brilliant at summaries
         chat_completion = await groq_client.chat.completions.create(
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an elite enterprise research agent. Provide a comprehensive, well-structured Markdown report based on the user's request. Be highly analytical."
+                    "content": (
+                        "You are an elite enterprise research agent. "
+                        "You have been provided with LIVE WEB CONTEXT. "
+                        "Use this live data to write a comprehensive, accurate Markdown report answering the user's request. "
+                        "If the web data is insufficient, use your general knowledge, but always prioritize the live context for recent events."
+                    )
                 },
                 {
                     "role": "user",
-                    "content": query
+                    "content": f"User Request: {query}\n\n=== LIVE WEB CONTEXT ===\n{live_context}\n========================"
                 }
             ],
             model="llama-3.1-8b-instant",
-            temperature=0.3, # Keep it professional and focused
+            temperature=0.3,
         )
         
-        # Extract the AI's response
         final_report = chat_completion.choices[0].message.content
-        
         print(f"[👷 Worker {job_id}] ✅ Research complete!")
         return final_report
 
@@ -57,15 +74,10 @@ async def run_research_agent(ctx, query: str):
         return f"Task failed: {str(e)}"
 
 async def main():
-    """Explicitly create and run the worker in a modern async loop."""
     redis_settings = RedisSettings.from_dsn(REDIS_URI)
+    worker = Worker(functions=[run_research_agent], redis_settings=redis_settings)
     
-    worker = Worker(
-        functions=[run_research_agent],
-        redis_settings=redis_settings
-    )
-    
-    print("🚀 Starting Background AI Worker with Groq Integration...")
+    print("🚀 Starting Web-Enabled AI Worker...")
     await worker.main()
 
 if __name__ == "__main__":
