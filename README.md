@@ -23,7 +23,7 @@ Currently at **v0.5.0** (Routing & Asynchronous Processing Complete).
 
 **1. Clone the repository:**
 ```bash
-git clone [https://github.com/tussharmittal/enterprise-multi-agent-rag.git](https://github.com/tussharmittal/enterprise-multi-agent-rag.git)
+git clone [https://github.com/YOUR_USERNAME/enterprise-multi-agent-rag.git](https://github.com/YOUR_USERNAME/enterprise-multi-agent-rag.git)
 cd enterprise-multi-agent-rag
 ```
 
@@ -50,3 +50,12 @@ python -m app.services.ingest
 **5. Start the Background Worker (Terminal 1):**
 ```powershell
 # Make sure your venv is active!
+python -m app.services.worker
+```
+
+**6. Start the API Gateway (Terminal 2):**
+```powershell
+# Open a new terminal, activate venv, and run:
+uvicorn app.main:app --reload
+```
+Navigate to `http://127.0.0.1:8000/docs` and use the `POST /ask` endpoint to test the multi-agent routing!
