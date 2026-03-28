@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv, find_dotenv
 from arq import create_pool
 from arq.connections import RedisSettings
+from arq.jobs import Job, JobStatus
 
 # Import our custom services
 from app.services.search import search_documents
@@ -18,7 +19,7 @@ REDIS_URI = os.getenv("UPSTASH_REDIS_URI")
 app = FastAPI(
     title="Enterprise Multi-Agent RAG API",
     description="API Gateway for routing, caching, and processing LLM queries.",
-    version="0.5.0" # Bumped to 0.5.0 for the Asynchronous Queue!
+    version="1.0.0"
 )
 
 class QueryRequest(BaseModel):
@@ -85,5 +86,45 @@ async def ask_system(request: QueryRequest):
             "data": results
         }
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/status/{job_id}", tags=["Agentic Routing"])
+async def get_task_status(job_id: str):
+    """
+    Retrieves the status and final generated report of a background research task.
+    """
+    global queue_pool
+    try:
+        # Connect to the queue if we haven't already
+        if queue_pool is None:
+            queue_pool = await create_pool(RedisSettings.from_dsn(REDIS_URI))
+            
+        # Look up the specific job in Upstash Redis
+        job = Job(job_id, queue_pool)
+        status = await job.status()
+        
+        if status == JobStatus.queued or status == JobStatus.deferred:
+            return {"job_id": job_id, "status": "queued", "data": None}
+            
+        elif status == JobStatus.in_progress:
+            return {"job_id": job_id, "status": "processing", "message": "The AI is currently researching...", "data": None}
+            
+        elif status == JobStatus.complete:
+            # The AI is done! Grab the actual markdown text it returned
+            result = await job.result()
+            return {
+                "job_id": job_id, 
+                "status": "complete", 
+                "message": "Research finished successfully.",
+                "data": result  # <-- Here is your Markdown report!
+            }
+            
+        elif status == JobStatus.not_found:
+            raise HTTPException(status_code=404, detail="Job ID not found or expired.")
+            
+        else:
+            return {"job_id": job_id, "status": "failed", "data": None}
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
