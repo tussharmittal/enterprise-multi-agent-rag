@@ -47,6 +47,8 @@ UPSTASH_REDIS_URL=your_url_here
 UPSTASH_REDIS_TOKEN=your_token_here
 UPSTASH_REDIS_URI=rediss://default:YOUR_PASSWORD@your-endpoint.upstash.io:6379
 GROQ_API_KEY=gsk_your_groq_api_key
+SEARCH_PROVIDER=duckduckgo  # or 'tavily'
+TAVILY_API_KEY=tvly-your_tavily_api_key  # required if SEARCH_PROVIDER=tavily
 ```
 
 **4. Start the Application (Requires 3 Terminals):**

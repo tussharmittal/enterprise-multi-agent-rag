@@ -20,9 +20,14 @@ if not REDIS_URI:
     raise ValueError("🚨 Missing UPSTASH_REDIS_URI in .env file!")
 if not GROQ_API_KEY:
     raise ValueError("🚨 Missing GROQ_API_KEY in .env file!")
+if SEARCH_PROVIDER == "tavily" and not TAVILY_API_KEY:
+    raise ValueError("🚨 Missing TAVILY_API_KEY in .env file!")
 
 # Initialize the Groq client
 groq_client = AsyncGroq(api_key=GROQ_API_KEY)
+
+# Initialize Tavily client at module level (if configured)
+tavily_client = TavilyClient(api_key=TAVILY_API_KEY) if SEARCH_PROVIDER == "tavily" else None
 
 def scrape_live_web(query: str, max_results: int = 3):
     """Sync function to quickly grab the top search snippets from DuckDuckGo."""
@@ -39,8 +44,7 @@ def scrape_live_web(query: str, max_results: int = 3):
 def scrape_live_web_tavily(query: str, max_results: int = 3):
     """Sync function to grab search results from Tavily."""
     try:
-        client = TavilyClient(api_key=TAVILY_API_KEY)
-        response = client.search(query, max_results=max_results)
+        response = tavily_client.search(query, max_results=max_results)
         context = ""
         for i, res in enumerate(response["results"]):
             context += f"Source {i+1}: {res.get('title')}\nSnippet: {res.get('content')}\n\n"
