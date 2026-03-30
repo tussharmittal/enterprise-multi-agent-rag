@@ -66,3 +66,9 @@ uvicorn app.main:app --reload
 streamlit run app_ui.py
 ```
 Navigate to `http://localhost:8501` to interact with your AI!
+
+## 📊 Architecture Presentation & Video
+I used NotebookLM to generate a comprehensive slide deck and video breakdown of this system's routing logic and infrastructure. 
+
+* [📄 View the Architecture Slide Deck (PDF)](./docs/Enterprise_RAG_Architecture.pdf)
+* [🎥 Watch the Architecture Walkthrough Video](./docs/Enterprise_RAG_Architecture.mp4)
